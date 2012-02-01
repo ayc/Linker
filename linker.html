@@ -605,9 +605,9 @@
 				$("<a class='moveme' tabindex='99'></a>").mousedown(function(e){ // waaa, keydown event won't trigger without tabindex
 					links.event.activateMoveme(e,this.parentNode);
 				}).bind("keydown",function(e){
-					if (e.which == 16){links.event.shiftDown=true;console.log("shift DOWN")}
+					if (e.which == 16){links.event.shiftDown=true;}
 				}).bind("keyup",function(e){
-					if (e.which == 16){links.event.shiftDown=false;console.log("shift UP")}
+					if (e.which == 16){links.event.shiftDown=false;}
 				}).appendTo(node).focus();
 				
 				
@@ -707,7 +707,6 @@
 					var newY = targetY+deltaY;
 
 					if (links.event.shiftDown){
-						console.log(Math.abs(deltaX),Math.abs(deltaY))
 						if (Math.abs(deltaX) < Math.abs(deltaY)){
 							newX = parseInt(links.currentTarget.getAttribute("data-left"));
 						} else {
