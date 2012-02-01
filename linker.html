@@ -17,6 +17,21 @@
 		background-color: #fcc; opacity: .5;
 		outline: 1px solid red;
 	}
+	div.link:hover,div.link.highlight {
+		border: solid 1px #00F;
+		background-color: red;
+		opacity: .7;
+		outline: 0px;
+		margin: -1px -1px 0 0;
+	}
+	#background { height: 1004px;
+		-webkit-user-select: none;
+		-khtml-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		-o-user-select: none;
+		user-select: none;	
+	}
 	#background { height: 1004px; }
 	#upform {
 		position: fixed; clear: both;
@@ -42,10 +57,122 @@
 	}
 	#v-guide { width: 1px; height: 2000px; top: 0; }
 	#h-guide { width: 2000px; height: 1px; left: 0; }
+	
+	#toolbarthingy{
+		display: none;
+		position: fixed;
+		top: 0px;
+		right: 0px;
+	}
+	#toolbarthingy ul{
+		list-style: none;
+	}
+	#toolbarthingy ul li{
+		text-align: right;
+	}
+	
+	
+	
+	
+	
+	.removenode{
+		position: absolute;
+		height: 20px;
+		width: 16px;
+		top: 0px;
+		right: 0px;
+		background-color: white;
+		border: solid black 4px;
+		border-radius: 10px;
+		margin-right: -12px;
+		margin-top: -29px;
+		text-align: center;
+		z-index:1;
+	}
+	.rightshiftnode{
+		position: absolute;
+		right: 0px;
+		top: 0px;
+		height: inherit;
+		width: 10px;
+		margin-right: -10px;
+		background-color: black;
+	}
+	.bottomshiftnode{
+		position: absolute;
+		right: 0px;
+		top: 100%;
+		height: 10px;
+		width: inherit;
+		top-right: -10px;
+		background-color: black;
+	}
+	.moveme{
+		position: absolute;
+		top: 0px;
+		left: 0px;
+		background-color:#666;
+		height: inherit;
+		width: inherit;
+	}
+	.sizeme{
+		position: absolute;
+		bottom: 0px;
+		right: 0px;
+		background-color: #666;
+		height: 10px;
+		width: 10px;
+		margin-bottom: -11px;
+		margin-right: -11px;
+	}
+	
+	
+	
+	
+	
 </style>
 
 <title>Linker</title>
 <img id="background">
+<div id="toolbarthingy">
+	<ul>
+    	<li>
+        	<label for="select">[S]elect<input type="radio" name="action" id="select" onchange="mode.set(this)">
+        </li>
+    	<li>
+        	<label for="make">[M]ake new node<input type="radio" name="action" id="make" onchange="mode.set(this)">
+        </li>
+    </ul>
+    <ul id="clickMenu">
+        <li>
+            <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input onclick="clickMenu.minus('cmX')" type="button" value="-" /><input onclick="clickMenu.plus('cmX')" type="button" value="+" />
+        </li>
+        <li>
+            <label for="cmY">Y </label><input id="cmY" type="text" tabindex="1" /><input onclick="clickMenu.minus('cmY')" type="button" value="-" /><input onclick="clickMenu.plus('cmY')" type="button" value="+" />
+        </li>
+        <li>
+            <label for="cmHeight">Height </label><input id="cmHeight" type="text" tabindex="2" /><input onclick="clickMenu.minus('cmHeight')" type="button" value="-" /><input onclick="clickMenu.plus('cmHeight')" type="button" value="+" />
+        </li>
+        <li>
+            <label for="cmWidth">Width </label><input id="cmWidth" type="text" tabindex="3" /><input onclick="clickMenu.minus('cmWidth')" type="button" value="-" /><input onclick="clickMenu.plus('cmWidth')" type="button" value="+" />
+        </li>
+        <li>
+            <input onclick="clickMenu.activeGOTO()" value="Activate GOTO" type="button" />
+        </li>
+        <li>
+            <label for="cmURL">URL </label><input id="cmURL" type="text"  tabindex="4"/>
+        </li>
+        <li>
+            <label for="cmPageNum">PageNum </label><input id="cmPageNum" type="text"  tabindex="5"/>
+        </li>
+        <li>
+        <!--	<input onclick="clickMenu.save()" value="<SAVE>" type="button" />-->
+            <input onclick="clickMenu.setToDelete()" value="DELETE NODE" type="button" />
+            <input onclick="clickMenu.setToClone()" value="CLONE NODE" type="button" />
+            <input id="cmTargetID" type="hidden" />
+        </li>
+    </ul>
+</div>
 <form id="upform">
 	<select id="height">
 		<option value="928px">Height: 928px</option>
@@ -102,8 +229,9 @@
 			$('#check', ld).show(); $('#edit', ld).prop('checked', true);
 			linking.removeClass().addClass('link').css( 'pointer-events', 'auto' );
 			linking = null;
-		} else {
-			linking = $('<div id="link-' + ++n_links + '" class="linking"></div>').css( {
+		} else{
+			links.overlay.hide();
+			linking = $('<div id="link-' + ++n_links + '" class="linking" data-left="'+(mouseX+1)+'" data-top="'+mouseY+'"></div>').css( {
 				left: mouseX + 1, top: mouseY,
 				width: 0, height: 0
 			} );
@@ -113,11 +241,16 @@
 
 	$('body').on( {
 		click: function (e) {
-			if ( e.altKey ) {
-				$('#' + this.id, ld).remove();
-				$(this).remove();
-				if ( linking ) linking.remove();
-				e.stopPropagation();
+			if (e.target.nodeName == "A"){
+				return false;
+			} else {
+				links.assignTarget(e.target);
+				if ( e.altKey ) {
+					$('#' + this.id, ld).remove();
+					$(this).remove();
+					if ( linking ) linking.remove();
+					e.stopPropagation();
+				}
 			}
 		},
 		mouseenter: function (e) {
@@ -145,8 +278,29 @@
 			} );
 		}
 		if ( linking ) {
+			var originx = linking.attr("data-left");
+			var originy = linking.attr("data-top");
+			
 			var lo = linking.offset();
-			linking.css( { width: mouseX - lo.left, height: mouseY - lo.top } );
+			var x = mouseX;
+			var y = mouseY;
+			var height = y-originy;
+			var width = x-originx;
+			if (y < originy){
+				height = originy-y;
+				linking.css("top",y+"px");
+				$("#cmY").val(y);
+			}
+			if (x < originx){
+				width = originx-x;
+				linking.css("left",x+"px");
+				$("#cmX").val(x);
+			}
+			linking.css( { width: width, height: height} ).attr("data-width",width).attr("data-height",height);
+			$("#cmHeight").val(height);
+			$("#cmWidth").val(width);
+			
+//			linking.css( { width: mouseX - lo.left, height: mouseY - lo.top } );
 		}
 		$('#v-guide').css( { left: mouseX } );
 		$('#h-guide').css( { top: mouseY } );
@@ -255,15 +409,40 @@
 							)
 					);
 					$('#check', ld).show(); $('#edit', ld).prop('checked', true);
-					$(this).children().each( function () {
-						var dims = $(this).text();
-						var m = dims.match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
-						if ( m ) {
-							var link = $('<div id="link-' + n_links + '" class="link linked"></div>');
-							$('body').append(link);
-							link.css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
-						}
-					} );
+					
+					var xmlkey = $(this).children("key");
+					var xmlval = $(this).children(":not(key)");
+					
+					var link =  $('<div id="link-' + n_links + '" class="link linked"></div>')
+					$('body').append(link);
+					var pagenumber;
+					var url;
+					
+					if (xmlkey.length != xmlval.length){
+						console.error("[update_plist] <dict> children key/value mismatch!",this)
+					} else {
+						$(xmlkey).each(function(i,j){
+							var dkey = $(xmlkey[i]).text();
+							var dval = $(xmlval[i]).text();
+							if (dkey == "final-coordinates"){
+								var m = dval.match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
+								link.css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
+								link.attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
+							} else if (dkey == "view-type"){
+								// hrm, do nothing I suppose...
+							} else {
+								// only because it's not view-type or final-coordinates...
+								if (dkey == "url"){
+									link.attr("data-url",dval);
+								} else if (dkey == "page-number"){
+									link.attr("data-pagenum",dval);
+								} else {
+									console.error("[update_plist] unknown key/value found!",xmlkey,xmlval);
+									// ok, something is lulzy here..
+								}
+							}
+						});
+					}
 				} );
 			},
 			error: function () {
@@ -322,10 +501,10 @@
 
 		$('#links', d).on( {
 			mouseenter: function (e) {
-				$('#' + this.id).css( 'outline-width', '5px' );
+				$('#' + this.id).addClass("highlight");
 			},
 			mouseleave: function (e) {
-				$('#' + this.id).css( 'outline-width', '1px' );
+				$('#' + this.id).removeClass("highlight");
 			},
 			dblclick: function (e) {
 				$(this).css( 'background-color', 'white' ).prop( 'contenteditable', true );
@@ -336,6 +515,8 @@
 					$(this).prop( 'contenteditable', false ).each( function () {
 						var m = $(this).text().match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
 						$('#' + this.id).css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
+						$('#' + this.id).attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
+						
 					} );
 				}
 			}
@@ -343,6 +524,192 @@
 
 		return win;
 	}
+	
+
+	var links = { //
+		masterlist : [],
+		currentTarget : null,
+		assignTarget : function(node){
+			if (node == this.currentTarget){ 
+				return false; // no need to assign target to this node twice in a row
+			}
+			if (this.currentTarget){
+				// old target needs to be replaced, and so do the overlay controls..
+				this.overlay.hide(this.currentTarget);// lets remove the layover controls
+			}
+			this.currentTarget = node;
+			var nodejson = this.util.extractAttr(this.currentTarget);
+			this.util.setInputfields(nodejson);
+			this.overlay.show(this.currentTarget);// add in layover controls
+		},
+		util : {
+			extractAttr : function(node){
+				var id = $(node).attr("id");
+				var x = $(node).attr("data-left");
+				var y = $(node).attr("data-top");
+				var h = $(node).attr("data-width");
+				var w = $(node).attr("data-height");
+				var url = $(node).attr("data-url");
+				var pagenum = $(node).attr("data-pagenum");
+				return {
+					id : id,
+					x : x,
+					y : y,
+					h : h,
+					w : w,
+					url : url,
+					pagenum : pagenum
+				}
+			},
+			setInputfields : function(nodejson){
+				node = nodejson;
+				$("#cmX").val(node.x)
+				$("#cmY").val(node.y)
+				$("#cmWidth").val(node.w)
+				$("#cmHeight").val(node.h)
+				$("#cmURL").val(node.url)
+				$("#cmPageNum").val(node.pagenum)
+				$("#cmTargetID").val(node.id)
+			}
+		},
+		overlay : {
+			show : function(node){
+				$("#toolbarthingy").show();
+				var nodejson = links.util.extractAttr(node);
+				$("<a class='removenode'>x</a>").click(function(){
+					$('#' + this.parentNode.id, ld).remove();
+					$(this.parentNode).remove();
+				}).mouseup(links.event.deactivate).appendTo(node);
+				$("<a class='moveme'></a>").mousedown(function(e){
+					links.event.activateMoveme(e,this.parentNode);
+				}).appendTo(node);
+				$("<a class='sizeme'></a>").mousedown(function(e){
+					links.event.activateSizeme(e,this.parentNode);
+				}).appendTo(node);
+			},
+			hide : function(node){ 
+				if (!node){
+					node = links.currentTarget;
+				}
+				if (!links.currentTarget){
+					return false;
+				}
+				$("#toolbarthingy").hide();
+				$("#"+node.id+" a").remove("a");
+			}
+		},
+		update : function(deltajson){
+			/*
+			data = {
+				x : 
+				y:
+				h:
+				w:
+				url:
+				pagenum:
+				id:
+			}
+			*/
+			var nodejson = this.util.extractAttr(this.currentTarget);
+			
+			nodejson = {
+				x : (deltajson.x)?(deltajson.x):nodejson.x,
+				y : (deltajson.y)?(deltajson.y):nodejson.y,
+				h : (deltajson.h)?(deltajson.h):nodejson.h,
+				w : (deltajson.w)?(deltajson.w):nodejson.w,
+				url : (deltajson.url)?(deltajson.url):nodejson.url,
+				pagenum : (deltajson.pagenum)?(deltajson.pagenum):nodejson.pagenum,
+				id : nodejson.id,
+			}|
+			
+			
+			this.util.setInputfields(nodejson);
+			
+		},
+		event : {
+			mouseorigin : {
+				x : null,
+				y : null
+			},
+			mode : null,
+			activateMoveme : function(e,node){
+				if (links.event.mode != null){return false};
+				links.event.mode = "moveme";
+				links.event.mouseorigin.x = e.pageX;
+				links.event.mouseorigin.y = e.pageY;
+				$("body").bind("mousemove",links.event.mousemove);
+				$("body").mouseup(links.event.deactivate);
+			},
+			activateSizeme : function(e,node){
+				if (links.event.mode != null){return false};
+				links.event.mode = "sizeme";
+				links.event.mouseorigin.x = e.pageX;
+				links.event.mouseorigin.y = e.pageY;
+				$("body").bind("mousemove",links.event.mousemove);
+				$("body").mouseup(links.event.deactivate);
+			},
+			mousemove : function(e){
+				var newX = e.pageX;
+				var newY = e.pageY;
+				if (links.event.mode == "sizeme") {
+					var deltaWidth = newX-links.event.mouseorigin.x;
+					var targetWidth = parseInt(links.currentTarget.getAttribute("data-width"));
+					var newWidth  = targetWidth+deltaWidth
+					$("#cmWidth").val(newWidth)
+					$(links.currentTarget).css({width:newWidth})
+					
+					var deltaHeight = newY-links.event.mouseorigin.y;
+					var targetHeight = parseInt(links.currentTarget.getAttribute("data-height"));
+					var newHeight = targetHeight+deltaHeight;
+					$("#cmHeight").val(newHeight)
+					$(links.currentTarget).css({height:newHeight})
+				} else if (links.event.mode == "moveme"){
+					var deltaX = newX-links.event.mouseorigin.x;
+					var targetX = parseInt(links.currentTarget.getAttribute("data-left"));
+					var newX  = targetX+deltaX
+					$("#cmX").val(newX)
+					$(links.currentTarget).css({left:newX})
+					
+					var deltaY = newY-links.event.mouseorigin.y;
+					var targetY = parseInt(links.currentTarget.getAttribute("data-top"));
+					var newY = targetY+deltaY;
+					$("#cmY").val(newY)
+					$(links.currentTarget).css({top:newY})
+				}
+			},
+			deactivate : function(){
+				$("body").unbind("mousemove",links.event.mousemove)
+				if (links.event.mode == "sizeme"){
+					links.currentTarget.setAttribute("data-width",$("#cmWidth").val());
+					links.currentTarget.setAttribute("data-height",$("#cmHeight").val());
+				} else if (links.event.mode =="moveme"){
+					links.currentTarget.setAttribute("data-top",$("#cmY").val());
+					links.currentTarget.setAttribute("data-left",$("#cmX").val());
+				}
+				
+				var n = links.util.extractAttr(links.currentTarget);
+				
+				var link = '\t<key>url</key>\n\t<string>'+$("#cmURL").val()+'</string>';
+				var pagenum = $("#cmPageNum").val();
+				if (parseInt(pagenum) == pagenum){
+					link = '\t<key>page-number</key>\n\t<integer>'+$("#cmPageNum").val()+'</integer>';
+				}
+				$('#links #'+n.id+'', ld).text( [
+						'<dict>',
+						'\t<key>view-type</key>',
+						'\t<string>link</string>',
+						'\t<key>final-coordinates</key>',
+						'\t<string>{{'+n.x+','+n.y+'},{'+n.h+','+n.w+'}}</string>',
+						link,
+						'</dict>'
+					].join('\n') )
+					
+				links.event.mode = null;
+			}
+		}
+	}
+	
+	
 
 	// OPEN INITIAL PAGE
 
