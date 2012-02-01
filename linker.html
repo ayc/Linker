@@ -207,7 +207,7 @@
 	// EVENTS
 
 	$('#background').click( function (e) {
-		if ( linking ) {
+		if ( (linking) && (links.currentTarget == null)) {
 			var dims = '{{' + linking.offset().left + ',' + linking.offset().top
 			 	+ '},{' + linking.width() + ',' + linking.height() + '}}';
 			var link = '\t<key>url</key>\n\t<string>http://</string>';
@@ -229,13 +229,15 @@
 			$('#check', ld).show(); $('#edit', ld).prop('checked', true);
 			linking.removeClass().addClass('link').css( 'pointer-events', 'auto' );
 			linking = null;
-		} else{
+		} else if ((links.currentTarget == null)){
 			links.overlay.hide();
 			linking = $('<div id="link-' + ++n_links + '" class="linking" data-left="'+(mouseX+1)+'" data-top="'+mouseY+'"></div>').css( {
 				left: mouseX + 1, top: mouseY,
 				width: 0, height: 0
 			} );
 			$('body').append( linking );
+		} else {
+			links.overlay.hide();
 		}
 	} );
 
@@ -596,6 +598,7 @@
 				}
 				$("#toolbarthingy").hide();
 				$("#"+node.id+" a").remove("a");
+				links.currentTarget = null;
 			}
 		},
 		update : function(deltajson){
