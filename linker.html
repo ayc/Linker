@@ -63,6 +63,9 @@
 		position: fixed;
 		top: 0px;
 		right: 0px;
+		background-color: gray;
+		opacity: .8;
+		z-index: 2;
 	}
 	#toolbarthingy ul{
 		list-style: none;
@@ -70,8 +73,12 @@
 	#toolbarthingy ul li{
 		text-align: right;
 	}
-	
-	
+	#toolbarthingy ul li input[type="text"]{
+		width: 40px;
+	}
+	#toolbarthingy ul li input[type="text"]#cmURL{
+		width: 140px;
+	}	
 	
 	
 	
@@ -135,14 +142,6 @@
 <title>Linker</title>
 <img id="background">
 <div id="toolbarthingy">
-	<ul>
-    	<li>
-        	<label for="select">[S]elect<input type="radio" name="action" id="select" onchange="mode.set(this)">
-        </li>
-    	<li>
-        	<label for="make">[M]ake new node<input type="radio" name="action" id="make" onchange="mode.set(this)">
-        </li>
-    </ul>
     <ul id="clickMenu">
         <li>
             <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input onclick="clickMenu.minus('cmX')" type="button" value="-" /><input onclick="clickMenu.plus('cmX')" type="button" value="+" />
@@ -166,9 +165,9 @@
             <label for="cmPageNum">PageNum </label><input id="cmPageNum" type="text"  tabindex="5"/>
         </li>
         <li>
-        <!--	<input onclick="clickMenu.save()" value="<SAVE>" type="button" />-->
+        <!--	<input onclick="clickMenu.save()" value="<SAVE>" type="button" />
             <input onclick="clickMenu.setToDelete()" value="DELETE NODE" type="button" />
-            <input onclick="clickMenu.setToClone()" value="CLONE NODE" type="button" />
+            <input onclick="clickMenu.setToClone()" value="CLONE NODE" type="button" />-->
             <input id="cmTargetID" type="hidden" />
         </li>
     </ul>
@@ -549,8 +548,8 @@
 				var id = $(node).attr("id");
 				var x = $(node).attr("data-left");
 				var y = $(node).attr("data-top");
-				var h = $(node).attr("data-width");
-				var w = $(node).attr("data-height");
+				var h = $(node).attr("data-height");
+				var w = $(node).attr("data-width");
 				var url = $(node).attr("data-url");
 				var pagenum = $(node).attr("data-pagenum");
 				return {
@@ -572,6 +571,22 @@
 				$("#cmURL").val(node.url)
 				$("#cmPageNum").val(node.pagenum)
 				$("#cmTargetID").val(node.id)
+			},
+			rebuildDictXML : function(nodejson){
+				var link = '\t<key>url</key>\n\t<string>'+nodejson.url+'</string>';
+				var pagenum = nodejson.pagenum;
+				if (parseInt(pagenum) == pagenum){
+					link = '\t<key>page-number</key>\n\t<integer>'+nodejson.pagenum+'</integer>';
+				}
+				$('#links #'+nodejson.id+'', ld).text( [
+						'<dict>',
+						'\t<key>view-type</key>',
+						'\t<string>link</string>',
+						'\t<key>final-coordinates</key>',
+						'\t<string>{{'+nodejson.x+','+nodejson.y+'},{'+nodejson.h+','+nodejson.w+'}}</string>',
+						link,
+						'</dict>'
+					].join('\n') );
 			}
 		},
 		overlay : {
@@ -607,7 +622,7 @@
 				links.currentTarget = null;
 			}
 		},
-		update : function(deltajson){
+		update : function(deltajson){ // links.update({x:10}) or links.update({x:10,y:20})
 			/*
 			data = {
 				x : 
@@ -620,20 +635,23 @@
 			}
 			*/
 			var nodejson = this.util.extractAttr(this.currentTarget);
-			
-			nodejson = {
-				x : (deltajson.x)?(deltajson.x):nodejson.x,
-				y : (deltajson.y)?(deltajson.y):nodejson.y,
-				h : (deltajson.h)?(deltajson.h):nodejson.h,
-				w : (deltajson.w)?(deltajson.w):nodejson.w,
-				url : (deltajson.url)?(deltajson.url):nodejson.url,
-				pagenum : (deltajson.pagenum)?(deltajson.pagenum):nodejson.pagenum,
+			var n = {
+				x : (deltajson.x === undefined)?(nodejson.x):deltajson.x,
+				y : (deltajson.y === undefined)?(nodejson.y):deltajson.y,
+				h : (deltajson.h === undefined)?(nodejson.h):deltajson.h,
+				w : (deltajson.w === undefined)?(nodejson.w):deltajson.w,
+				url : (deltajson.url === undefined)?(nodejson.url):deltajson.url,
+				pagenum : (deltajson.pagenum === undefined)?(nodejson.pagenum):deltajson.pagenum,
 				id : nodejson.id,
-			}|
+			};
 			
+			this.util.rebuildDictXML(n);
+			this.util.setInputfields(n);
 			
-			this.util.setInputfields(nodejson);
-			
+			$(links.currentTarget).css({left:n.x})
+			$(links.currentTarget).css({top:n.y})
+			$(links.currentTarget).css({height:n.h})
+			$(links.currentTarget).css({width:n.w})
 		},
 		event : {
 			shiftDown : false,
@@ -657,6 +675,7 @@
 				links.event.mouseorigin.y = e.pageY;
 				$("body").bind("mousemove",links.event.mousemove);
 				$("body").mouseup(links.event.deactivate);
+				$(".moveme").hide();
 			},
 			mousemove : function(e){
 				var newX = e.pageX;
@@ -690,6 +709,19 @@
 							newY = parseInt(links.currentTarget.getAttribute("data-top"));
 						}
 					}
+					// bounding boxes
+					if (newX < 0){
+						newX = 0;
+					}
+					if (newY < 0){
+						newY = 0;
+					}
+					if (newX > ($('#background').width()-links.currentTarget.getAttribute("data-width"))){
+						newX = ($('#background').width()-links.currentTarget.getAttribute("data-width"))
+					}
+					if (newY > ($('#background').height()-links.currentTarget.getAttribute("data-height"))){
+						newY = ($('#background').height()-links.currentTarget.getAttribute("data-height"))
+					}
 					
 					$("#cmX").val(newX)
 					$(links.currentTarget).css({left:newX})
@@ -702,28 +734,17 @@
 				if (links.event.mode == "sizeme"){
 					links.currentTarget.setAttribute("data-width",$("#cmWidth").val());
 					links.currentTarget.setAttribute("data-height",$("#cmHeight").val());
+					$(".moveme").show();
 				} else if (links.event.mode =="moveme"){
 					links.currentTarget.setAttribute("data-top",$("#cmY").val());
 					links.currentTarget.setAttribute("data-left",$("#cmX").val());
 				}
 				
 				var n = links.util.extractAttr(links.currentTarget);
+				n.url = $("#cmURL").val();
+				n.pagenum = parseInt($("#cmPageNum").val())
 				
-				var link = '\t<key>url</key>\n\t<string>'+$("#cmURL").val()+'</string>';
-				var pagenum = $("#cmPageNum").val();
-				if (parseInt(pagenum) == pagenum){
-					link = '\t<key>page-number</key>\n\t<integer>'+$("#cmPageNum").val()+'</integer>';
-				}
-				$('#links #'+n.id+'', ld).text( [
-						'<dict>',
-						'\t<key>view-type</key>',
-						'\t<string>link</string>',
-						'\t<key>final-coordinates</key>',
-						'\t<string>{{'+n.x+','+n.y+'},{'+n.h+','+n.w+'}}</string>',
-						link,
-						'</dict>'
-					].join('\n') )
-					
+				links.util.rebuildDictXML(n);
 				links.event.mode = null;
 			}
 		}
