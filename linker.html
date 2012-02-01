@@ -461,8 +461,13 @@
 			'location=0,status=0,scrollbars=1,width=400,height=800'
 		);
 
-		var d = win.document;
-
+		var d;
+		try {
+			d = win.document;
+		} catch(e){
+			alert("Looks like you got popups blocked. Please enable popups and reload page.")
+		}
+		
 		d.writeln( '<style type="text/css" media="screen">' );
 		d.writeln( '	body { font-family: Verdana; font-size: 12px; margin: 10px; }' );
 		d.writeln( '	h2 { font-size: 14px; }' );
