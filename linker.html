@@ -1,5 +1,4 @@
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-
 <style type="text/css" media="screen">
 	body {
 		margin: 0;
@@ -18,11 +17,9 @@
 		outline: 1px solid red;
 	}
 	div.link:hover,div.link.highlight {
-		border: solid 1px #00F;
+		outline: solid 1px blue;
 		background-color: red;
 		opacity: .7;
-		outline: 0px;
-		margin: -1px -1px 0 0;
 	}
 	#background { height: 1004px;
 		-webkit-user-select: none;
@@ -118,7 +115,7 @@
 		position: absolute;
 		top: 0px;
 		left: 0px;
-		background-color:#666;
+		background-color: rgba(0, 0, 0, .5);		
 		height: inherit;
 		width: inherit;
 	}
@@ -143,17 +140,17 @@
 <img id="background">
 <div id="toolbarthingy">
     <ul id="clickMenu">
-        <li>
-            <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input onclick="clickMenu.minus('cmX')" type="button" value="-" /><input onclick="clickMenu.plus('cmX')" type="button" value="+" />
+        <li class="x">
+            <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input type="button" value="-" /><input type="button" value="+" />
         </li>
-        <li>
-            <label for="cmY">Y </label><input id="cmY" type="text" tabindex="1" /><input onclick="clickMenu.minus('cmY')" type="button" value="-" /><input onclick="clickMenu.plus('cmY')" type="button" value="+" />
+        <li class="y">
+            <label for="cmY">Y </label><input id="cmY" type="text" tabindex="1" /><input type="button" value="-" /><input type="button" value="+" />
         </li>
-        <li>
-            <label for="cmHeight">Height </label><input id="cmHeight" type="text" tabindex="2" /><input onclick="clickMenu.minus('cmHeight')" type="button" value="-" /><input onclick="clickMenu.plus('cmHeight')" type="button" value="+" />
+        <li class="height">
+            <label for="cmHeight">Height </label><input id="cmHeight" type="text" tabindex="2" /><input type="button" value="-" /><input type="button" value="+" />
         </li>
-        <li>
-            <label for="cmWidth">Width </label><input id="cmWidth" type="text" tabindex="3" /><input onclick="clickMenu.minus('cmWidth')" type="button" value="-" /><input onclick="clickMenu.plus('cmWidth')" type="button" value="+" />
+        <li class="width">
+            <label for="cmWidth">Width </label><input id="cmWidth" type="text" tabindex="3" /><input type="button" value="-" /><input type="button" value="+" />
         </li>
         <li>
             <input onclick="clickMenu.activeGOTO()" value="Activate GOTO" type="button" />
@@ -427,8 +424,10 @@
 							var dval = $(xmlval[i]).text();
 							if (dkey == "final-coordinates"){
 								var m = dval.match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
-								link.css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
-								link.attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
+								if (m){
+									link.css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
+									link.attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
+								}
 							} else if (dkey == "view-type"){
 								// hrm, do nothing I suppose...
 							} else {
@@ -625,6 +624,31 @@
 				$("#toolbarthingy").hide();
 				$("#"+node.id+" a").remove("a");
 				links.currentTarget = null;
+			},
+			minus : function(input,delta){
+				input.value=parseInt(input.value)+delta;
+				if (input.id == "cmX"){
+					console.log(links.currentTarget)
+					links.update({x:input.value})
+				} else if (input.id == "cmY"){
+					links.update({y:input.value})
+				} else if (input.id == "cmHeight"){
+					links.update({h:input.value})
+				} else if (input.id == "cmWidth"){
+					links.update({w:input.value})
+				}
+			},
+			plus : function(input,delta){
+				input.value=parseInt(input.value)+delta;
+				if (input.id == "cmX"){
+					links.update({x:input.value})
+				} else if (input.id == "cmY"){
+					links.update({y:input.value})
+				} else if (input.id == "cmHeight"){
+					links.update({h:input.value})
+				} else if (input.id == "cmWidth"){
+					links.update({w:input.value})
+				}
 			}
 		},
 		update : function(deltajson){ // links.update({x:10}) or links.update({x:10,y:20})
@@ -653,10 +677,7 @@
 			this.util.rebuildDictXML(n);
 			this.util.setInputfields(n);
 			
-			$(links.currentTarget).css({left:n.x})
-			$(links.currentTarget).css({top:n.y})
-			$(links.currentTarget).css({height:n.h})
-			$(links.currentTarget).css({width:n.w})
+			$(links.currentTarget).css({left:n.x}).css({top:n.y}).css({height:n.h}).css({width:n.w}).attr("data-left",n.x).attr("data-top",n.y).attr("data-height",n.h).attr("data-width",n.w)
 		},
 		event : {
 			shiftDown : false,
@@ -754,6 +775,20 @@
 		}
 	}
 	
+	$(document).ready(function() {
+		// stupid dom acting up, gonna just bind it with this super hackalicious stuff right here
+		$("li.x input[value='-']").click(function(){links.overlay.minus($("#cmX").get(0),parseInt(-1))})
+		$("li.x input[value='+']").click(function(){links.overlay.minus($("#cmX").get(0),parseInt(1))})
+		
+		$("li.y input[value='-']").click(function(){links.overlay.minus($("#cmY").get(0),parseInt(-1))})
+		$("li.y input[value='+']").click(function(){links.overlay.minus($("#cmY").get(0),parseInt(1))})
+		
+		$("li.height input[value='-']").click(function(){links.overlay.minus($("#cmHeight").get(0),parseInt(-1))})
+		$("li.height input[value='+']").click(function(){links.overlay.minus($("#cmHeight").get(0),parseInt(1))})
+		
+		$("li.width input[value='-']").click(function(){links.overlay.minus($("#cmWidth").get(0),parseInt(-1))})
+		$("li.width input[value='+']").click(function(){links.overlay.minus($("#cmWidth").get(0),parseInt(1))})
+	});
 	
 
 	// OPEN INITIAL PAGE
