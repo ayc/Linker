@@ -1,68 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>linker</title>
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script>
+/*! Copyright (c) 2011 Brandon Aaron (http://brandonaaron.net)
+ * Licensed under the MIT License (LICENSE.txt).
+ *
+ * Thanks to: http://adomas.org/javascript-mouse-wheel/ for some pointers.
+ * Thanks to: Mathias Bank(http://www.mathias-bank.de) for a scope bug fix.
+ * Thanks to: Seamus Leahy for adding deltaX and deltaY
+ *
+ * Version: 3.0.6
+ * 
+ * Requires: 1.2.2+
+ */
+
+(function($) {
+
+var types = ['DOMMouseScroll', 'mousewheel'];
+
+if ($.event.fixHooks) {
+    for ( var i=types.length; i; ) {
+        $.event.fixHooks[ types[--i] ] = $.event.mouseHooks;
+    }
+}
+
+$.event.special.mousewheel = {
+    setup: function() {
+        if ( this.addEventListener ) {
+            for ( var i=types.length; i; ) {
+                this.addEventListener( types[--i], handler, false );
+            }
+        } else {
+            this.onmousewheel = handler;
+        }
+    },
+    
+    teardown: function() {
+        if ( this.removeEventListener ) {
+            for ( var i=types.length; i; ) {
+                this.removeEventListener( types[--i], handler, false );
+            }
+        } else {
+            this.onmousewheel = null;
+        }
+    }
+};
+
+$.fn.extend({
+    mousewheel: function(fn) {
+        return fn ? this.bind("mousewheel", fn) : this.trigger("mousewheel");
+    },
+    
+    unmousewheel: function(fn) {
+        return this.unbind("mousewheel", fn);
+    }
+});
+
+
+function handler(event) {
+    var orgEvent = event || window.event, args = [].slice.call( arguments, 1 ), delta = 0, returnValue = true, deltaX = 0, deltaY = 0;
+    event = $.event.fix(orgEvent);
+    event.type = "mousewheel";
+    
+    // Old school scrollwheel delta
+    if ( orgEvent.wheelDelta ) { delta = orgEvent.wheelDelta/120; }
+    if ( orgEvent.detail     ) { delta = -orgEvent.detail/3; }
+    
+    // New school multidimensional scroll (touchpads) deltas
+    deltaY = delta;
+    
+    // Gecko
+    if ( orgEvent.axis !== undefined && orgEvent.axis === orgEvent.HORIZONTAL_AXIS ) {
+        deltaY = 0;
+        deltaX = -1*delta;
+    }
+    
+    // Webkit
+    if ( orgEvent.wheelDeltaY !== undefined ) { deltaY = orgEvent.wheelDeltaY/120; }
+    if ( orgEvent.wheelDeltaX !== undefined ) { deltaX = -1*orgEvent.wheelDeltaX/120; }
+    
+    // Add event and delta to the front of the arguments
+    args.unshift(event, delta, deltaX, deltaY);
+    
+    return ($.event.dispatch || $.event.handle).apply(this, args);
+}
+
+})(jQuery);
+</script>
+
 <style type="text/css" media="screen">
+	html {min-height: 100%;}
+	html {
+			background-color: #c5ccd4;
+			background: -webkit-gradient(
+				linear,
+				0 0,
+				100% 0,
+				from(#c5ccd4),
+				color-stop(.7,#c5ccd4),
+				color-stop(.7,#cbd2d8),
+				to(#cbd2d8)
+			);
+			-webkit-background-size: 7px 2px;
+	}
 	body {
 		margin: 0;
-		background-color: #ddd;
 		font-family: Verdana;
-		cursor: crosshair;
+		padding: 10px 10px 149px;
 	}
 	div.linking {
 		position: absolute;
 		outline: 1px dashed red;
 		pointer-events: none;
 	}
+	#background div.outline{
+		background: none;
+		border: 1px dashed red;
+		cursor:crosshair;
+	}
 	div.link {
 		position: absolute;
 		background-color: #fcc; opacity: .5;
-		outline: 1px solid red;
+		border: 1px solid red;
+		cursor: pointer;
 	}
-	div.link:hover,div.link.highlight {
-		outline: solid 1px blue;
-		background-color: red;
-		opacity: .7;
+	#backgroundplaceholder{
+		position: relative;
+		top: 0;
+		left: 0;
+		float: left;
+		z-index: -10;
+		height: 1004px;
+		box-shadow: 2px 2px 10px rgba(0,0,0,.5);
 	}
-	#background { height: 1004px;
+	#background {
+		height: 1004px;
+		width: 100% ;
+		-webkit-touch-callout: none;
 		-webkit-user-select: none;
 		-khtml-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
 		-o-user-select: none;
-		user-select: none;	
+		user-select: none;		
+		background-size: contain;
+		background-repeat: no-repeat;
+		position: relative;
+		min-width:740px;
+		top: 0px;
+		left: 0px;
 	}
-	#background { height: 1004px; }
+	#background.crosshair{
+		cursor: crosshair;
+	}
+	#background.pointer{
+		cursor: auto;
+	}
+	#background div[crosshair="snapped"]{
+		background-color:#CC0;
+	}
+	#background div:not(.outline):hover{
+		border: solid 1px blue;
+		background-color: red;
+		opacity: .7;
+	}
 	#upform {
 		position: fixed; clear: both;
 		width: 100%;
-		margin: 0; padding: 6px;
+		margin: 0 0 0 -10px; padding: 6px;
 		bottom: 0; border: none; border-top: 1px solid #666;
-		background-color: white; z-index: 10; opacity: .8;
+		background-color: white; z-index: 10; opacity: 1;
+		box-shadow: 0 0 10px rgba(0,0,0,1);
 	}
 	#upbox {
-		position: absolute;
-		float: left;
 		width: 220px;
 		border: 1px inset;
 		padding: 3px;
 		background-color: #bbb;
 		font-size: 12px;
+		display: inline-block;
 	}
 	#upfile { opacity: 0; }
 	#height { float: right; margin-right: 20px; }
 	.guide {
-		position: absolute; background-color: #666;
+		position: fixed;
+		/*background-color: black;*/
+		background-color:rgba(128, 128, 128, .5);
 		pointer-events: none;
 	}
 	#v-guide { width: 1px; height: 2000px; top: 0; }
 	#h-guide { width: 2000px; height: 1px; left: 0; }
 	
+	#thumbsscroller{
+		position: relative;
+		width: 100%;
+		height: 100px;
+		position: fixed;
+		bottom: 39px;
+		right: 0px;
+		overflow-x: scroll;
+		overflow-y: hidden;
+		background-color: #000;
+		box-shadow: 0 0 10px rgba(0,0,0,1);
+		-webkit-transition-duration: 500ms;
+		z-index: 1;
+	}
+	#thumbsscroller.hidden{
+		/*-webkit-transform: translateY(100px);*/
+		opacity: 0;
+	}
+	#thumbsscroller.show{
+		-webkit-transform: translateY(0px);
+	}
+	#thumbsscroller::-webkit-scrollbar {
+		height: 10px;
+		color: #6F6;
+		background-color: #000;
+	}
+	
+	#thumbsscroller::-webkit-scrollbar-track {
+		background-color: #000;
+		border-radius: 10px;
+	}
+	#thumbsscroller::-webkit-scrollbar-thumb {
+		-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.8);
+		border-radius: 10px;
+		background-color: #999
+	}	
+	.scrollcontainer{
+		width: 1000%;
+	}
+	.scrollcontainer img{
+		height: 83px;
+		float: left;
+		opacity: .5;
+		-webkit-transition-duration: 500ms;
+		margin-bottom: 10px;
+	}
+	.scrollcontainer img:hover,.scrollcontainer img.selected{
+		opacity: 1;
+	}
+	
+	
+	
+	
+	
 	#toolbarthingy{
-		display: none;
 		position: fixed;
 		top: 0px;
 		right: 0px;
 		background-color: gray;
 		opacity: .8;
 		z-index: 2;
+		padding-right: 8px;
+		box-shadow: 2px 2px 10px rgba(0,0,0,.5);
+		display: none;
 	}
 	#toolbarthingy ul{
 		list-style: none;
@@ -75,10 +269,7 @@
 	}
 	#toolbarthingy ul li input[type="text"]#cmURL{
 		width: 140px;
-	}	
-	
-	
-	
+	}
 	.removenode{
 		position: absolute;
 		height: 20px;
@@ -92,24 +283,6 @@
 		margin-top: -29px;
 		text-align: center;
 		z-index:1;
-	}
-	.rightshiftnode{
-		position: absolute;
-		right: 0px;
-		top: 0px;
-		height: inherit;
-		width: 10px;
-		margin-right: -10px;
-		background-color: black;
-	}
-	.bottomshiftnode{
-		position: absolute;
-		right: 0px;
-		top: 100%;
-		height: 10px;
-		width: inherit;
-		top-right: -10px;
-		background-color: black;
 	}
 	.moveme{
 		position: absolute;
@@ -129,340 +302,511 @@
 		margin-bottom: -11px;
 		margin-right: -11px;
 	}
-	
-	
-	
-	
-	
+		
+
 </style>
+<script>
 
-<title>Linker</title>
-<img id="background">
-<div id="toolbarthingy">
-    <ul id="clickMenu">
-        <li class="x">
-            <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input type="button" value="-" /><input type="button" value="+" />
-        </li>
-        <li class="y">
-            <label for="cmY">Y </label><input id="cmY" type="text" tabindex="1" /><input type="button" value="-" /><input type="button" value="+" />
-        </li>
-        <li class="height">
-            <label for="cmHeight">Height </label><input id="cmHeight" type="text" tabindex="2" /><input type="button" value="-" /><input type="button" value="+" />
-        </li>
-        <li class="width">
-            <label for="cmWidth">Width </label><input id="cmWidth" type="text" tabindex="3" /><input type="button" value="-" /><input type="button" value="+" />
-        </li>
-        <li>
-            <input onclick="clickMenu.activeGOTO()" value="Activate GOTO" type="button" />
-        </li>
-        <li>
-            <label for="cmURL">URL </label><input id="cmURL" type="text"  tabindex="4"/>
-        </li>
-        <li>
-            <label for="cmPageNum">PageNum </label><input id="cmPageNum" type="text"  tabindex="5"/>
-        </li>
-        <li>
-        <!--	<input onclick="clickMenu.save()" value="<SAVE>" type="button" />
-            <input onclick="clickMenu.setToDelete()" value="DELETE NODE" type="button" />
-            <input onclick="clickMenu.setToClone()" value="CLONE NODE" type="button" />-->
-            <input id="cmTargetID" type="hidden" />
-        </li>
-    </ul>
-</div>
-<form id="upform">
-	<select id="height">
-		<option value="928px">Height: 928px</option>
-		<option value="1004px" selected="selected">Height: 1004px</option>
-	</select>
-	<div id="upbox">Click or drop file here</div>
-	<input id="upfile" type="file">
-	<input type="submit" id="prev" class="nav" value="< Prev">
-	<input type="submit" id="next" class="nav" value="Next >">
-</form>
-<div id="v-guide" class="guide"></div>
-<div id="h-guide" class="guide"></div>
-
-<script type="text/javascript" charset="utf-8">
-
-	$('.nav').prop('disabled', true);
-
-	window.moveTo(0, 0);
-	window.resizeTo(768, window.outerHeight);
-	$('#background').css( 'margin-bottom', $('#upform').outerHeight() );
-
-	var lw = open_links_window();
-	var ld = lw.document;
-	self.focus();
-
-	var pages = [];
-	var mouseX = -1;
-	var mouseY = -1;
-	var linking;
-	var n_links = 0;
-
-	// EVENTS
-
-	$('#background').click( function (e) {
-		if ( (linking) && (links.currentTarget == null)) {
-			var dims = '{{' + linking.offset().left + ',' + linking.offset().top
-			 	+ '},{' + linking.width() + ',' + linking.height() + '}}';
-			var link = '\t<key>url</key>\n\t<string>http://</string>';
-			if ( e.shiftKey ) {
-				link = '\t<key>page-number</key>\n\t<integer>000</integer>';
-			}
-			$('#links', ld)
-				.append( $('<div id="link-' + n_links + '">')
-					.text( [
-						'<dict>',
-						'\t<key>view-type</key>',
-						'\t<string>link</string>',
-						'\t<key>final-coordinates</key>',
-						'\t<string>' + dims + '</string>',
-						link,
-						'</dict>'
-					].join('\n') )
-				);
-			$('#check', ld).show(); $('#edit', ld).prop('checked', true);
-			linking.removeClass().addClass('link').css( 'pointer-events', 'auto' );
-			linking = null;
-		} else if ((links.currentTarget == null)){
-			links.overlay.hide();
-			linking = $('<div id="link-' + ++n_links + '" class="linking" data-left="'+(mouseX+1)+'" data-top="'+mouseY+'"></div>').css( {
-				left: mouseX + 1, top: mouseY,
-				width: 0, height: 0
-			} );
-			$('body').append( linking );
-		} else {
-			links.overlay.hide();
-		}
-	} );
-
-	$('body').on( {
-		click: function (e) {
-			if (e.target.nodeName == "A"){
-				return false;
-			} else {
-				links.assignTarget(e.target);
-				if ( e.altKey ) {
-					$('#' + this.id, ld).remove();
-					$(this).remove();
-					if ( linking ) linking.remove();
-					e.stopPropagation();
-				}
-			}
-		},
-		mouseenter: function (e) {
-			$('#' + this.id, ld).css( 'color', 'red' );
-		},
-		mouseleave: function (e) {
-			$('#' + this.id, ld).css( 'color', 'black' );
-		}
-	}, 'div.link' )
-	.on( 'mousemove', function (e) {
-		mouseX = e.pageX;
-		mouseY = e.pageY;
-		if ( ! e.altKey ) {
-			// Snapping to link edges
-			$('div.link').each( function () {
-				var link = $(this);
-				var l = link.offset().left
-				var t = link.offset().top;
-				var r = l + link.width();
-				var b = t + link.height();
-				if ( Math.abs(mouseX - l) < 4 ) { mouseX = l - 1 }
-				if ( Math.abs(mouseX - r) < 4 ) { mouseX = r }
-				if ( Math.abs(mouseY - t) < 4 ) { mouseY = t - 1 }
-				if ( Math.abs(mouseY - b) < 4 ) { mouseY = b }
-			} );
-		}
-		if ( linking ) {
-			var originx = linking.attr("data-left");
-			var originy = linking.attr("data-top");
-			
-			var lo = linking.offset();
-			var x = mouseX;
-			var y = mouseY;
-			var height = y-originy;
-			var width = x-originx;
-			if (y < originy){
-				height = originy-y;
-				linking.css("top",y+"px");
-				$("#cmY").val(y);
-			}
-			if (x < originx){
-				width = originx-x;
-				linking.css("left",x+"px");
-				$("#cmX").val(x);
-			}
-			linking.css( { width: width, height: height} ).attr("data-width",width).attr("data-height",height);
-			$("#cmHeight").val(height);
-			$("#cmWidth").val(width);
-			
-//			linking.css( { width: mouseX - lo.left, height: mouseY - lo.top } );
-		}
-		$('#v-guide').css( { left: mouseX } );
-		$('#h-guide').css( { top: mouseY } );
-	} );
-
-	var filename;
-
-	$('#upfile').on( 'change', function (e) {
-		filename = $('#upfile').val();
-		filename = filename.split('\\').pop();
-		update_image(filename);
-	} ).click( function (e) { e.stopPropagation() } );
-
-	$('#prev').on( 'click', function (e) {
-		var n = filename.match( /(\d+)\.jpg/ )[1];
-		if ( n > 0 ) {
-			filename = filename.replace( /\d+\.jpg/, Number(n) - 1 + '.jpg' );
-			update_image();
-		}
-		return false;
-	} );
-
-	$('#next').on( 'click', function (e) {
-		var n = filename.match( /(\d+)\.jpg/ )[1];
-		filename = filename.replace( /\d+\.jpg/, Number(n) + 1 + '.jpg' );
-		update_image();
-		return false;
-	} );
-
-	$(document).keydown( function (e) {
-		if (e.keyCode == 37) { // left arrow
-			$('#prev').click();
-			return false;
-		} else if (e.keyCode == 39) { // right arrow
-			$('#next').click();
-			return false;
-		} else if (e.keyCode == 27) { // escape
-			if ( linking ) linking.remove();
-			linking = null;
-			return false;
-		}
-	} );
-
-	$('#height').on( 'change', function (e) {
-		set_height( $(this).val() );
-	} );
-
-	// FUNCTIONS
-
-	window.scrollBarWidth = function() {
-	  document.body.style.overflow = 'hidden';
-	  var width = document.body.clientWidth;
-	  document.body.style.overflow = 'scroll';
-	  width -= document.body.clientWidth;
-	  if(!width) width = document.body.offsetWidth - document.body.clientWidth;
-	  document.body.style.overflow = '';
-	  return width;
-	}
-
-	function set_height (height) {
-		localStorage.setItem( 'page_height', height );
-		$('#background').css( 'height', height );
-		$('#v-guide').css( 'height', height ).show();
-		$('#h-guide').css( 'width', $('#background').css('width') ).show();
-		setTimeout( function () {
-			var width = $('#background').width() + window.scrollBarWidth();
-			window.resizeTo( width, window.screen.availHeight );
-			lw.moveTo(width + 1, 0);
-		}, 50 );
-	}
-
-	function update_image () {
-		localStorage.setItem( 'page_filename', filename );
-		$('#background').prop( 'src', encodeURI('pages/' + filename) );
-		$('#links', ld).empty();
-		$('.link').remove();
-		$('#check', ld).hide();
-		$('#upbox').text( filename );
-		$('.nav').prop('disabled', false);
-		linking = null;
-		update_plist(filename);
-	}
-
-	var xs = new XMLSerializer;
-
-	function rect (r) {
-		return ['rect(', r.top, r.right, r.bottom, r.left, ')'].join(' ');
-	}
-
-	function update_plist (filename) {
-		var plistname = pages[filename.match( /(\d+)\.jpg/ )[1]] + '.plist';
-		$('#filename', ld).text( plistname );
-		$.ajax( {
-			url: plistname,
-			tries: 0,
-			success: function (xml) {
-				n_links = 0;
-				$(xml).find('array').children().each( function () {
-					$('#links', ld).append(
-						$('<div id="link-' + ++n_links + '"></div')
-							.text(
-								xs.serializeToString(this)
-								.replace( /\n\s+/g, '\n\t' )
-								.replace( /\t<dict>/, '<dict>' )
-								.replace( /\t<\/dict>/, '</dict>' )
-							)
-					);
-					$('#check', ld).show(); $('#edit', ld).prop('checked', true);
-					
-					var xmlkey = $(this).children("key");
-					var xmlval = $(this).children(":not(key)");
-					
-					var link =  $('<div id="link-' + n_links + '" class="link linked"></div>')
-					$('body').append(link);
-					var pagenumber;
-					var url;
-					
-					if (xmlkey.length != xmlval.length){
-						console.error("[update_plist] <dict> children key/value mismatch!",this)
-					} else {
-						$(xmlkey).each(function(i,j){
-							var dkey = $(xmlkey[i]).text();
-							var dval = $(xmlval[i]).text();
-							if (dkey == "final-coordinates"){
-								var m = dval.match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
-								if (m){
-									link.css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
-									link.attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
-								}
-							} else if (dkey == "view-type"){
-								// hrm, do nothing I suppose...
-							} else {
-								// only because it's not view-type or final-coordinates...
-								if (dkey == "url"){
-									link.attr("data-url",dval);
-								} else if (dkey == "page-number"){
-									link.attr("data-pagenum",dval);
-								} else {
-									console.error("[update_plist] unknown key/value found!",xmlkey,xmlval);
-									// ok, something is lulzy here..
-								}
-							}
-						});
+var mouse = {
+	currentX : null,
+	currentY : null,
+	globalX : null,
+	globalY : null,
+	crosshairX : null,
+	crosshairY : null,
+	backgroundX : null,
+	backgroundY : null,
+	getXY : function(e){
+		mouse.currentX = e.offsetX;
+		mouse.currentY = e.offsetY;
+		mouse.globalX = e.clientX;
+		mouse.globalY = e.clientY;
+		e.stopPropagation();
+	},
+	cursor : {
+		crosshairs : {
+			_vars : {
+				vguide : null,
+				hguide : null,
+				links : [],
+				snapThreshold : 10,
+				snappedDom : null,
+			},
+			highlightSnapped : function(dom){
+				if(dom == null){
+					if (mouse.cursor.crosshairs._vars.snappedDom != null){
+						mouse.cursor.crosshairs._vars.snappedDom.removeAttribute("crosshair");
+						mouse.cursor.crosshairs._vars.snappedDom = null;
 					}
-				} );
+				} else if (mouse.cursor.crosshairs._vars.snappedDom != dom){
+					if (mouse.cursor.crosshairs._vars.snappedDom != null){
+						mouse.cursor.crosshairs._vars.snappedDom.removeAttribute("crosshair")
+					}
+					mouse.cursor.crosshairs._vars.snappedDom = dom;
+					dom.setAttribute("crosshair","snapped")
+				}
+			},
+			grabLinksandStorein_vars : function(){
+				mouse.cursor.crosshairs._vars.links =[]; //nuke it!
+				var linksarray = $("#background > div");
+				for (i = 0; i < linksarray.length; i++){
+					var myobj = {};
+					myobj.l = parseInt(linksarray[i].getAttribute("data-left"));
+					myobj.t = parseInt(linksarray[i].getAttribute("data-top"));
+					myobj.r = parseInt(linksarray[i].getAttribute("data-left"))+parseInt(linksarray[i].getAttribute("data-width"));
+					myobj.b = parseInt(linksarray[i].getAttribute("data-top"))+parseInt(linksarray[i].getAttribute("data-height"));
+					myobj.id = linksarray[i].id;
+					myobj.dom = linksarray[i];
+					mouse.cursor.crosshairs._vars.links.push(myobj);
+				}
+			},
+			activate : function(){
+				mouse.cursor.crosshairs._vars.vguide = document.getElementById("v-guide");
+				mouse.cursor.crosshairs._vars.hguide = document.getElementById("h-guide");
+				
+				$("#v-guide,#h-guide").show();
+			},
+			deactivate : function(){
+				$("#v-guide,#h-guide").hide();
+			},
+			update : function(e){
+				if (e.target.id == "background"){
+					mouse.crosshairX = mouse.globalX;
+					mouse.crosshairY = mouse.globalY;
+					
+					mouse.backgroundX = mouse.currentX;
+					mouse.backgroundY = mouse.currentY;
+	
+					var isitSnapped = false;
+					if ( ! e.altKey ) {
+						var diffXWinner = mouse.cursor.crosshairs._vars.snapThreshold+1;
+						var diffYWinner = mouse.cursor.crosshairs._vars.snapThreshold+1;
+						
+						for(i = 0; i < mouse.cursor.crosshairs._vars.links.length; i++){
+							var link = mouse.cursor.crosshairs._vars.links[i];
+							var currentDiffX = Math.abs(mouse.currentX-link.l);
+							if ((currentDiffX < mouse.cursor.crosshairs._vars.snapThreshold)&&(currentDiffX < diffXWinner)) {
+								mouse.crosshairX = link.l+(mouse.globalX-mouse.currentX) 
+								mouse.backgroundX = link.l;
+								mouse.cursor.crosshairs.highlightSnapped(link.dom)
+								diffXWinner = currentDiffX;
+								isitSnapped = true;
+							}
+							currentDiffX = Math.abs(mouse.currentX - (link.r))
+							if ((currentDiffX < mouse.cursor.crosshairs._vars.snapThreshold )&&(currentDiffX < diffXWinner)){
+								mouse.crosshairX = link.r+(mouse.globalX-mouse.currentX) 
+								mouse.backgroundX = link.r;
+								mouse.cursor.crosshairs.highlightSnapped(link.dom)
+								diffXWinner = currentDiffX;
+								isitSnapped = true;
+							}
+							var currentDiffY = Math.abs(mouse.currentY-link.t);
+							if ((currentDiffY < mouse.cursor.crosshairs._vars.snapThreshold) && (currentDiffY < diffYWinner)){
+								mouse.crosshairY = link.t+(mouse.globalY-mouse.currentY)
+								mouse.backgroundY = link.t;
+								mouse.cursor.crosshairs.highlightSnapped(link.dom)
+								diffYWinner = currentDiffY;
+								isitSnapped = true;
+							}
+							currentDiffY = Math.abs(mouse.currentY-link.b);
+							if ((currentDiffY < mouse.cursor.crosshairs._vars.snapThreshold) && (currentDiffY < diffYWinner)){
+								mouse.crosshairY = link.b+(mouse.globalY-mouse.currentY)
+								mouse.backgroundY = link.b;
+								mouse.cursor.crosshairs.highlightSnapped(link.dom)
+								diffYWinner = currentDiffY;
+								isitSnapped = true;
+							}
+						}
+					}
+					if (!isitSnapped){
+						mouse.cursor.crosshairs.highlightSnapped();
+					}
+					mouse.cursor.crosshairs._vars.vguide.style.left = mouse.crosshairX+"px"
+					mouse.cursor.crosshairs._vars.hguide.style.top = mouse.crosshairY+"px"
+				} else {
+					mouse.crosshairX = mouse.globalX;
+					mouse.crosshairY = mouse.globalY;
+					
+					mouse.cursor.crosshairs._vars.vguide.style.left = mouse.crosshairX+"px"
+					mouse.cursor.crosshairs._vars.hguide.style.top = mouse.crosshairY+"px"
+					
+				}
+
+			}
+		},
+		enableCrosshairmode : function(){
+			// strange... for whatever reason mousemove event is really laggy when mouse is over a dom element that has a configured background-size... I wonder why..
+			mouse.cursor.enablePointermode(); // here to remove excess binding events
+			$("#background")
+				.bind("mouseenter",mouse.cursor.crosshairs.activate)
+				.bind("mouseleave",mouse.cursor.crosshairs.deactivate)
+				.bind("mousemove",mouse.cursor.crosshairs.update)	
+				.bind("click",plist.page.newBox.click)
+				.addClass("crosshair").removeClass("pointer");
+		},
+		enablePointermode : function(){
+			$("#background")
+				.unbind("mouseenter",mouse.cursor.crosshairs.activate)
+				.unbind("mouseleave",mouse.cursor.crosshairs.deactivate)
+				.unbind("mousemove",mouse.cursor.crosshairs.update)
+				.unbind("click",plist.page.newBox.click)
+				.addClass("pointer").removeClass("crosshair");
+		}
+	},
+	init : function(){
+		$("#background").mousemove(mouse.getXY);
+	}
+}
+
+var plist = {
+	data : {
+		height : null,
+		pages : [],
+		tocpagenumber : null,
+		imagefilename : null,
+		thumbfilename : null
+	},
+	init : function(){
+		// locate the replica file, then build out the plist for chain ajaxing 
+		$.ajax( {
+			url: 'Replica.plist',
+			success: function (xml) {
+				var keys = $(xml).find('key');
+				var values = $(xml).children("dict").children(":not(key)");
+				
+				if (($(keys).size()) != ($(values).size())){
+					alert("[plist.init] Replica.plist parsing error! Key mismatch! Please see console for details")
+					console.log(keys,values)
+					return;
+				}
+				for(i =0; i < $(keys).size(); i++){
+					switch(keys[i].textContent){
+						case "toc-page-number":
+							plist.data.tocpagenumber = parseInt(values[i].textContent);
+							break;
+						case "background-image-file-name":
+							plist.data.imagefilename = values[i].textContent;
+							break;
+						case "thumb-image-file-name":
+							plist.data.thumbfilename = values[i].textContent;
+							break;
+						case "pages":
+							$(values[i]).find("string").each( function (index, page) {
+								plist.data.pages.push({pagename:page.textContent,pagedata:null,pagedatabuffer:null});
+							} );
+							break;
+						default :
+							console.error("THIS XML IS BORK BORK BORK!")
+							console.log("DEFAULT",i,keys[i].textContent,values[i].textContent);
+					}
+				}
+				console.log("replica.plist data:",plist.data)
+				plist.thumbs.generateHTML();
 			},
 			error: function () {
-				if( this.tries++ > 2 ) return;
-				this.url = this.url.replace( /(\d+\.plist)/, '0$&' );
-				$.ajax(this);
+				alert( 'No Replica.plist found. Please put this file in the issue directory.')
 			}
 		} );
+		
+		$(document).keydown( function (e) {
+			if (e.keyCode == 37) { // left arrow
+				plist.controls.prev();
+				return false;
+			} else if (e.keyCode == 39) { // right arrow
+				plist.controls.next();
+				return false;
+			} else if (e.keyCode == 27) { // escape
+				console.log("esc!")
+				return false;
+			}
+		} );		
+		
+	},
+	thumbs : {
+		generateHTML : function(){
+			var count = plist.data.pages.length;
+			var html = "";
+			for (i = 0; i < count; i++){
+				html += "<img plistpageindex='"+i+"' src='pages/"+plist.data.thumbfilename.replace("%i",i)+".jpg' onclick='plist.controls.getPage("+i+")'>"
+			}
+			$(".scrollcontainer").empty().append(html);
+			
+			// and generate the dropdown menu
+			var html = "";
+			for (i = 0; i < count; i++){
+				html += '<option value="'+i+'">GOTO PAGE: '+i+'</option>';
+			}
+			// let's calculate the width of the scrollcontainer..
+			$('.scrollcontainer img[plistpageindex="0"]').load(function() {  
+				$(".scrollcontainer").width(($(".scrollcontainer img").width()*(count+1)));
+				$("#thumbsscroller").removeClass("hidden")
+			});  			
+			
+			
+			$("#gotoSelect").html(html);
+			plist.controls.disabled = false;
+		},
+		select : function(index){
+			if (plist.controls.disabled) {
+				return false;
+			} else {
+				plist.controls.disabled = true;
+			}
+//			console.log("index thumb select!",index)
+			$(".scrollcontainer img").removeClass("selected");
+			$(".scrollcontainer img[plistpageindex='"+index+"']").addClass("selected");
+			setTimeout(function(){document.getElementById("gotoSelect").selectedIndex = index;},250);
+		}
+	},
+	page : {
+		currentIndex : null,
+		saveCurrentDataset : function(){
+			var datasets = document.querySelectorAll("#background > div.link");
+			var dataarray = []
+			for (i = 0; i < datasets.length; i++){
+				dataarray.push(datasets[i].dataset)
+			}
+			plist.data.pages[plist.page.currentIndex].pagedatabuffer = dataarray;
+		},
+		newBox : {
+			click : function(e){ 
+				// gotta move check here to see if toolbarthingy.isActive
+				var b = plist.page.newBox;
+				if (b.dom == null){
+					b.start(e);
+				} else {
+					b.end();
+				}
+			},
+			deltaX : null,
+			deltaY : null,
+			dom : null,
+			originX : null,
+			originY : null,
+			started : false,
+			outline : function(e){
+				var jqb = $(plist.page.newBox.dom);
+				
+				var x = plist.page.newBox.originX;
+				var y = plist.page.newBox.originY;
+				
+				var width = (mouse.crosshairX+plist.page.newBox.deltaX)-x;
+				var height = (mouse.crosshairY+plist.page.newBox.deltaY)-y;
+				
+				if (height < 0){
+					y = y+height;
+					height = -height;
+					jqb.css("top",y+"px");
+				}
+				if (width < 0){
+					x = x+width;
+					width = -width;
+					jqb.css("left",x+"px");
+				}
+				jqb.css( { width: width-1, height: height-1} ).attr("data-width",width).attr("data-height",height).attr("data-left",x).attr("data-top",y);
+			},
+			start : function(e){
+				if (e.target.id !== "background"){
+					toolbarthingy.activate(e.target);
+					return false;
+				} else if(toolbarthingy.activeNode !== null) {
+					toolbarthingy.deactivate();
+					return false;
+				}
+				if (plist.page.newBox.started){
+					alert("WUT")
+				}
+				// we need to calculate deltaX... because of some stupid bubbling effect that I don't feel like dealing with
+				plist.page.newBox.deltaX = mouse.backgroundX-mouse.crosshairX;
+				plist.page.newBox.deltaY = mouse.backgroundY-mouse.crosshairY;
+				var x = mouse.backgroundX;
+				var y = mouse.backgroundY;
+//				console.log(mouse.backgroundX,mouse.crosshairX,plist.page.newBox.deltaX,mouse.backgroundY,mouse.crosshairY,plist.page.newBox.deltaY)
+				var link =  $('<div id="'+Date.now()+'" class="link outline"></div>');
+				link.css("left",x+"px").css("top",y+"px").css("width","1px").css("height","1px");
+				$("#background").append(link);				
+				
+				plist.page.newBox.dom = link;
+				plist.page.newBox.originX = x;
+				plist.page.newBox.originY = y;
+				$("#background").bind("mousemove",plist.page.newBox.outline)
+				plist.page.newBox.started = true;
+			},
+			end : function(x,y){
+				$(plist.page.newBox.dom).removeClass("outline")
+				plist.page.newBox.dom = null;
+				$("#background").unbind("mousemove",plist.page.newBox.outline)
+				plist.page.saveCurrentDataset(); // save dataset to memory
+				popup.scanAndGenerateXML(); // rebuild xml on onther window
+				mouse.cursor.crosshairs.grabLinksandStorein_vars(); // rebuild snap-highlighting boundaries
+				$("#background > div").hover(function(e){ // reappoint hover event
+					$(e.target).addClass("hover");
+					$(popup.win.document.getElementById(e.target.id)).addClass("hover");
+					mouse.cursor.crosshairs.deactivate()
+				},function(e){
+					$("#"+e.target.id).removeClass("hover")
+					$(popup.win.document.getElementById(e.target.id)).removeClass("hover");
+					mouse.cursor.crosshairs.activate()
+				});
+				plist.page.newBox.started = false;
+			}
+		},
+		get : function(index){
+			if (plist.page.currentIndex !== null){
+				plist.page.saveCurrentDataset();
+			}
+			plist.thumbs.select(index);
+			$("#upbox").html(plist.data.pages[index].pagename+".plist");
+			// this is the ajax call... initial call made here will load up the necessary ajax data into the plist.data.pages obj
+			$("#backgroundplaceholder").attr("src","pages/"+plist.data.imagefilename.replace("%i",index)+".jpg");
+//			$("#background").css("background-image","url(pages/"+plist.data.imagefilename.replace("%i",index)+".jpg)");
+			if (plist.data.pages[index].pagedata == null){
+				$.ajax({
+					type : "GET",
+					url : plist.data.pages[index].pagename+".plist",
+					dataType : "xml",
+					success : function(data){
+						plist.data.pages[index].pagedata  = data;
+						plist.page.renderBoxesfromDataBuffer(plist.page.xformtopageDataBuffer(plist.data.pages[index].pagedata))
+					}
+				})
+			} else {
+				plist.page.renderBoxesfromDataBuffer(plist.data.pages[index].pagedatabuffer)
+			}
+			plist.page.currentIndex = index;
+//			plist.data.pages[plist.page.currentIndex].pagename;
+			mouse.cursor.enableCrosshairmode();
+		},
+		renderBoxesfromDataBuffer : function(d){
+			$("#background").empty();
+			for (i = 0; i < d.length; i++){
+				var link =  $('<div id="link-' + i + '" class="link"></div>');
+				link.css("left",d[i].left+"px").css("top",d[i].top+"px").css("width",(parseInt(d[i].width)-1)+"px").css("height",(parseInt(d[i].height)-1)+"px");
+				$("#background").append(link);
+				link.attr("data-left",d[i].left).attr("data-top",d[i].top).attr("data-width",d[i].width).attr("data-height",d[i].height);
+				if (d[i].url){
+					link.attr("data-url",d[i].url);
+				} else if (d[i].pagenum){
+					link.attr("data-pagenum",d[i].pagenum);
+				}
+			}
+			// let's bind the mouseover highlight
+			popup.scanAndGenerateXML()
+			mouse.cursor.crosshairs.grabLinksandStorein_vars();
+			plist.controls.disabled = false;
+			// lets bind hover events here!
+			$("#background > div").hover(function(e){
+				$(e.target).addClass("hover");
+				$(popup.win.document.getElementById(e.target.id)).addClass("hover");
+				mouse.cursor.crosshairs.deactivate()
+			},function(e){
+				$("#"+e.target.id).removeClass("hover")
+				$(popup.win.document.getElementById(e.target.id)).removeClass("hover");
+				mouse.cursor.crosshairs.activate()
+			});
+			
+			
+		},
+		xformtopageDataBuffer : function(xml){
+			var dataSets = [];
+			var dict = $(xml).find("dict array dict");
+			for (i = 0; i < dict.length; i++){
+				var key = $(dict[i]).children("key")
+				var val = $(dict[i]).children(":not(key)")
+				if (key.length != val.length){
+					console.error("[update_plist] <dict> children key/value mismatch!",xml,plist.data.pages[plist.page.currentIndex].pagename+".plist")
+					alert("yo this xml file is busted.. "+plist.data.pages[plist.page.currentIndex].pagename+".plist\nPlease see console for more details");
+				} else {				
+					var dataSet = {
+						left : 10,
+						top : 10,
+						width : 10,
+						height : 10
+					};
+					for(j = 0; j < key.length; j++){
+						var dkey = key[j].textContent;
+						var dval = val[j].textContent
+						if (dkey == "final-coordinates"){
+							var m = dval.match( /{\s*{\s*(\d+)\s*,\s*(\d+)\s*}\s*,\s*{\s*(\d+)\s*,\s*(\d+)\s*}\s*}/ );
+							if (m && (m.length== 5)){
+								dataSet.left = m[1];
+								dataSet.top = m[2];
+								dataSet.width = m[3];
+								dataSet.height = m[4];
+							}
+						} else if (dkey == "view-type"){
+							// hrm, do nothing I suppose...
+						} else {
+							// only because it's not view-type or final-coordinates...
+							if (dkey == "url"){
+								dataSet.url = dval;
+							} else if (dkey == "page-number"){
+								dataSet.pagenum = dval;
+							} else {
+								console.error("[update_plist] unknown key/value found!",dkey,dval);
+								// ok, something is lulzy here..
+							}
+						}
+					}
+				}
+				dataSets.push(dataSet);
+			}
+			return dataSets;
+		},
+		loadPage : function(index){
+		},
+		frame : {
+			dom : null,
+			
+		}
+	},
+	controls : {
+		disabled : true,
+		next : function(){
+			if (plist.controls.disabled) return false;
+			var newi = plist.page.currentIndex+1;
+			if (newi >= plist.data.pages.length){
+				newi = plist.data.pages.length-1;
+			}
+			plist.page.get(newi);
+			plist.controls.setHeight($("#height").val())
+		},
+		prev : function(){
+			if (plist.controls.disabled) return false;
+			var newi = plist.page.currentIndex-1;			
+			if (newi < 0){
+				newi = 0;
+			}
+			plist.page.get(newi);
+			plist.controls.setHeight($("#height").val())
+		},
+		getPage : function(index){ // plist.controls.getPage(i)
+			if (plist.controls.disabled) return false;
+			plist.page.get(index);
+			plist.controls.setHeight($("#height").val())
+		},
+		toggleThumbs : function(){ // plist.controls.toggleThumbs()
+			$("#thumbsscroller").toggleClass("hidden")
+
+		},
+		setHeight : function(height){
+			$('#background,#backgroundplaceholder').css( 'height', height );
+			window.setTimeout(function(){$('#background').css("width",$("#backgroundplaceholder").css("width"))},250);
+		}
 	}
+}
 
-	function open_links_window () {
-
-		var win = window.open(
+var popup = {
+	win : null,
+	init : function(){
+		this.win = window.open(
 			'', 'links_window',
 			'location=0,status=0,scrollbars=1,width=400,height=800'
 		);
 
 		var d;
 		try {
-			d = win.document;
+			d = this.win.document;
 		} catch(e){
 			alert("Looks like you got popups blocked. Please enable popups and reload page.")
 		}
@@ -486,6 +830,7 @@
 		d.writeln( '		margin-bottom: 1em;' );
 		d.writeln( '	}' );
 		d.writeln( '	#links div { margin: 6px; white-space: pre; }' );
+		d.writeln( '	#links div.hover { color: red; }' );
 		d.writeln( '	span { width: 150px; }' );
 		d.writeln( '	#check { display: none; }' );
 		d.writeln( '</style>' );
@@ -503,316 +848,409 @@
 		d.writeln( '	<p>Finally you can click the "Next" button (or press the right arrow key) to load the next page.</p>' );
 		d.writeln( '</div>' );
 		d.close();
-
-		$('#links', d).on( {
-			mouseenter: function (e) {
-				$('#' + this.id).addClass("highlight");
-			},
-			mouseleave: function (e) {
-				$('#' + this.id).removeClass("highlight");
-			},
-			dblclick: function (e) {
-				$(this).css( 'background-color', 'white' ).prop( 'contenteditable', true );
-			},
-			keydown: function (e) {
-				if ( e.which == 13 ) {
-					$(this).css( 'background-color', 'inherit' ).blur();
-					$(this).prop( 'contenteditable', false ).each( function () {
-						var m = $(this).text().match( /{{(\d+),(\d+)},{(\d+),(\d+)}}/ );
-						$('#' + this.id).css( { left: m[1], top: m[2], width: m[3], height: m[4] } );
-						$('#' + this.id).attr("data-left",m[1]).attr("data-top",m[2]).attr("data-width",m[3]).attr("data-height",m[4]);
-						
-					} );
-				}
-			}
-		}, 'div' );
-
-		return win;
-	}
-	
-
-	var links = { //
-		masterlist : [],
-		currentTarget : null,
-		assignTarget : function(node){
-			if (node == this.currentTarget){ 
-				return false; // no need to assign target to this node twice in a row
-			}
-			if (this.currentTarget){
-				// old target needs to be replaced, and so do the overlay controls..
-				this.overlay.hide(this.currentTarget);// lets remove the layover controls
-			}
-			this.currentTarget = node;
-			var nodejson = this.util.extractAttr(this.currentTarget);
-			this.util.setInputfields(nodejson);
-			this.overlay.show(this.currentTarget);// add in layover controls
-		},
-		util : {
-			extractAttr : function(node){
-				var id = $(node).attr("id");
-				var x = $(node).attr("data-left");
-				var y = $(node).attr("data-top");
-				var h = $(node).attr("data-height");
-				var w = $(node).attr("data-width");
-				var url = $(node).attr("data-url");
-				var pagenum = $(node).attr("data-pagenum");
-				return {
-					id : id,
-					x : x,
-					y : y,
-					h : h,
-					w : w,
-					url : url,
-					pagenum : pagenum
-				}
-			},
-			setInputfields : function(nodejson){
-				node = nodejson;
-				$("#cmX").val(node.x)
-				$("#cmY").val(node.y)
-				$("#cmWidth").val(node.w)
-				$("#cmHeight").val(node.h)
-				$("#cmURL").val(node.url)
-				$("#cmPageNum").val(node.pagenum)
-				$("#cmTargetID").val(node.id)
-			},
-			rebuildDictXML : function(nodejson){
-				var link = '\t<key>url</key>\n\t<string>'+nodejson.url+'</string>';
-				var pagenum = nodejson.pagenum;
-				if (parseInt(pagenum) == pagenum){
-					link = '\t<key>page-number</key>\n\t<integer>'+nodejson.pagenum+'</integer>';
-				}
-				$('#links #'+nodejson.id+'', ld).text( [
-						'<dict>',
-						'\t<key>view-type</key>',
-						'\t<string>link</string>',
-						'\t<key>final-coordinates</key>',
-						'\t<string>{{'+nodejson.x+','+nodejson.y+'},{'+nodejson.h+','+nodejson.w+'}}</string>',
-						link,
-						'</dict>'
-					].join('\n') );
-			}
-		},
-		overlay : {
-			show : function(node){
-				$("#toolbarthingy").show();
-				var nodejson = links.util.extractAttr(node);
-				$("<a class='removenode'>x</a>").click(function(){
-					$('#' + this.parentNode.id, ld).remove();
-					$(this.parentNode).remove();
-				}).mouseup(links.event.deactivate).appendTo(node);
-				$("<a class='moveme' tabindex='99'></a>").mousedown(function(e){ // waaa, keydown event won't trigger without tabindex
-					links.event.activateMoveme(e,this.parentNode);
-				}).bind("keydown",function(e){
-					if (e.which == 16){links.event.shiftDown=true;}
-				}).bind("keyup",function(e){
-					if (e.which == 16){links.event.shiftDown=false;}
-				}).appendTo(node).focus();
-				
-				
-				$("<a class='sizeme'></a>").mousedown(function(e){
-					links.event.activateSizeme(e,this.parentNode);
-				}).appendTo(node);
-			},
-			hide : function(node){ 
-				if (!node){
-					node = links.currentTarget;
-				}
-				if (!links.currentTarget){
-					return false;
-				}
-				$("#toolbarthingy").hide();
-				$("#"+node.id+" a").remove("a");
-				links.currentTarget = null;
-			},
-			minus : function(input,delta){
-				input.value=parseInt(input.value)+delta;
-				if (input.id == "cmX"){
-					console.log(links.currentTarget)
-					links.update({x:input.value})
-				} else if (input.id == "cmY"){
-					links.update({y:input.value})
-				} else if (input.id == "cmHeight"){
-					links.update({h:input.value})
-				} else if (input.id == "cmWidth"){
-					links.update({w:input.value})
-				}
-			},
-			plus : function(input,delta){
-				input.value=parseInt(input.value)+delta;
-				if (input.id == "cmX"){
-					links.update({x:input.value})
-				} else if (input.id == "cmY"){
-					links.update({y:input.value})
-				} else if (input.id == "cmHeight"){
-					links.update({h:input.value})
-				} else if (input.id == "cmWidth"){
-					links.update({w:input.value})
-				}
-			}
-		},
-		update : function(deltajson){ // links.update({x:10}) or links.update({x:10,y:20})
-			/*
-			data = {
-				x : 
-				y:
-				h:
-				w:
-				url:
-				pagenum:
-				id:
-			}
-			*/
-			var nodejson = this.util.extractAttr(this.currentTarget);
-			var n = {
-				x : (deltajson.x === undefined)?(nodejson.x):deltajson.x,
-				y : (deltajson.y === undefined)?(nodejson.y):deltajson.y,
-				h : (deltajson.h === undefined)?(nodejson.h):deltajson.h,
-				w : (deltajson.w === undefined)?(nodejson.w):deltajson.w,
-				url : (deltajson.url === undefined)?(nodejson.url):deltajson.url,
-				pagenum : (deltajson.pagenum === undefined)?(nodejson.pagenum):deltajson.pagenum,
-				id : nodejson.id,
-			};
+	},
+	scanAndGenerateXML : function(){
+		var links = $("#background > div");
+		var dims,link;
+		$(popup.win.document.getElementById("links")).empty();
+		for (i = 0; i < links.length; i++){
+			var left = links[i].getAttribute("data-left");
+			var top = links[i].getAttribute("data-top");
+			var width = links[i].getAttribute("data-width");
+			var height = links[i].getAttribute("data-height");
+			var id = links[i].getAttribute("id");
 			
-			this.util.rebuildDictXML(n);
-			this.util.setInputfields(n);
+			var url = links[i].getAttribute("data-url");
+			var pagenum = links[i].getAttribute("data-pagenum");
 			
-			$(links.currentTarget).css({left:n.x}).css({top:n.y}).css({height:n.h}).css({width:n.w}).attr("data-left",n.x).attr("data-top",n.y).attr("data-height",n.h).attr("data-width",n.w)
-		},
-		event : {
-			shiftDown : false,
-			mouseorigin : {
-				x : null,
-				y : null
-			},
-			mode : null,
-			activateMoveme : function(e,node){
-				if (links.event.mode != null){return false};
-				links.event.mode = "moveme";
-				links.event.mouseorigin.x = e.pageX;
-				links.event.mouseorigin.y = e.pageY;
-				$("body").bind("mousemove",links.event.mousemove);
-				$("body").mouseup(links.event.deactivate);
-			},
-			activateSizeme : function(e,node){
-				if (links.event.mode != null){return false};
-				links.event.mode = "sizeme";
-				links.event.mouseorigin.x = e.pageX;
-				links.event.mouseorigin.y = e.pageY;
-				$("body").bind("mousemove",links.event.mousemove);
-				$("body").mouseup(links.event.deactivate);
-				$(".moveme").hide();
-			},
-			mousemove : function(e){
-				var newX = e.pageX;
-				var newY = e.pageY;
-				if (links.event.mode == "sizeme") {
-					var deltaWidth = newX-links.event.mouseorigin.x;
-					var targetWidth = parseInt(links.currentTarget.getAttribute("data-width"));
-					var newWidth  = targetWidth+deltaWidth
-					$("#cmWidth").val(newWidth)
-					$(links.currentTarget).css({width:newWidth})
-					
-					var deltaHeight = newY-links.event.mouseorigin.y;
-					var targetHeight = parseInt(links.currentTarget.getAttribute("data-height"));
-					var newHeight = targetHeight+deltaHeight;
-					$("#cmHeight").val(newHeight)
-					$(links.currentTarget).css({height:newHeight})
-				} else if (links.event.mode == "moveme"){
-					var deltaX = newX-links.event.mouseorigin.x;
-					var targetX = parseInt(links.currentTarget.getAttribute("data-left"));
-					var newX  = targetX+deltaX
-					
-					var deltaY = newY-links.event.mouseorigin.y;
-					var targetY = parseInt(links.currentTarget.getAttribute("data-top"));
-					var newY = targetY+deltaY;
-
-					if (links.event.shiftDown){
-						if (Math.abs(deltaX) < Math.abs(deltaY)){
-							newX = parseInt(links.currentTarget.getAttribute("data-left"));
-						} else {
-							newY = parseInt(links.currentTarget.getAttribute("data-top"));
-						}
-					}
-					// bounding boxes
-					if (newX < 0){
-						newX = 0;
-					}
-					if (newY < 0){
-						newY = 0;
-					}
-					if (newX > ($('#background').width()-links.currentTarget.getAttribute("data-width"))){
-						newX = ($('#background').width()-links.currentTarget.getAttribute("data-width"))
-					}
-					if (newY > ($('#background').height()-links.currentTarget.getAttribute("data-height"))){
-						newY = ($('#background').height()-links.currentTarget.getAttribute("data-height"))
-					}
-					
-					$("#cmX").val(newX)
-					$(links.currentTarget).css({left:newX})
-					$("#cmY").val(newY)
-					$(links.currentTarget).css({top:newY})
-				}
-			},
-			deactivate : function(){
-				$("body").unbind("mousemove",links.event.mousemove)
-				if (links.event.mode == "sizeme"){
-					links.currentTarget.setAttribute("data-width",$("#cmWidth").val());
-					links.currentTarget.setAttribute("data-height",$("#cmHeight").val());
-					$(".moveme").show();
-				} else if (links.event.mode =="moveme"){
-					links.currentTarget.setAttribute("data-top",$("#cmY").val());
-					links.currentTarget.setAttribute("data-left",$("#cmX").val());
-				}
-				
-				var n = links.util.extractAttr(links.currentTarget);
-				n.url = $("#cmURL").val();
-				n.pagenum = parseInt($("#cmPageNum").val())
-				
-				links.util.rebuildDictXML(n);
-				links.event.mode = null;
+			
+			var link = '\t<key>url</key>\n\t<string>'+url+'</string>';
+			if (parseInt(pagenum) == pagenum){
+				link = '\t<key>page-number</key>\n\t<integer>'+pagenum+'</integer>';
 			}
+		
+			$(popup.win.document.getElementById("links")).append( $('<div id="'+id+'">')
+				.text( [
+					'<dict>',
+					'\t<key>view-type</key>',
+					'\t<string>link</string>',
+					'\t<key>final-coordinates</key>',
+					'\t<string>{{'+left+','+top+'},{'+width+','+height+'}}</string>',
+					link,
+					'</dict>'
+				].join('\n') )
+			);
 		}
+	},
+	writeTo : function(data){
+		$(this.win).find("#links")
 	}
-	
-	$(document).ready(function() {
-		// stupid dom acting up, gonna just bind it with this super hackalicious stuff right here
-		$("li.x input[value='-']").click(function(){links.overlay.minus($("#cmX").get(0),parseInt(-1))})
-		$("li.x input[value='+']").click(function(){links.overlay.minus($("#cmX").get(0),parseInt(1))})
-		
-		$("li.y input[value='-']").click(function(){links.overlay.minus($("#cmY").get(0),parseInt(-1))})
-		$("li.y input[value='+']").click(function(){links.overlay.minus($("#cmY").get(0),parseInt(1))})
-		
-		$("li.height input[value='-']").click(function(){links.overlay.minus($("#cmHeight").get(0),parseInt(-1))})
-		$("li.height input[value='+']").click(function(){links.overlay.minus($("#cmHeight").get(0),parseInt(1))})
-		
-		$("li.width input[value='-']").click(function(){links.overlay.minus($("#cmWidth").get(0),parseInt(-1))})
-		$("li.width input[value='+']").click(function(){links.overlay.minus($("#cmWidth").get(0),parseInt(1))})
-	});
-	
+}
 
-	// OPEN INITIAL PAGE
 
-	$.ajax( {
-		url: 'Replica.plist',
-		success: function (xml) {
-			$(xml).find('array').find('string').each( function (index, page) {
-				pages.push( page.textContent );
-			} );
-			filename = localStorage.getItem( 'page_filename' ) ||
-				pages[0].replace( /\d+$/, function (n) { return --n } ) + '.jpg';
-			update_image();
-			var saved_height = localStorage.getItem( 'page_height' );
-			if ( saved_height ) {
-				$('#height').val( saved_height ).change();
-			} else {
-				set_height( $('#background').height() );
-			}
-		},
-		error: function () {
-			alert( 'No Replica.plist found. Please put this file in the issue directory.')
+var toolbarthingy = {
+	activeNode : null,
+	activate : function(node){
+		if (node.nodeName !== "DIV"){
+			return false;
+			alert("GTFO")
 		}
-	} );
+		if (toolbarthingy.activeNode != node){
+			$(toolbarthingy.activeNode).empty(); // gut the previous one
+		}
+		toolbarthingy.activeNode = node;
+		$("#cmX").val(node.getAttribute("data-left"))
+		$("#cmY").val(node.getAttribute("data-top"))
+		$("#cmWidth").val(node.getAttribute("data-width"))
+		$("#cmHeight").val(node.getAttribute("data-height"))
+		$("#cmURL").val(node.getAttribute("data-url"))
+		$("#cmPageNum").val(node.getAttribute("data-pagenum"))
+		$("#cmTargetID").val(node.getAttribute("id"))
 
 
+		$("<a class='removenode'>x</a>").click(function(){toolbarthingy.deleteNode(node)}).appendTo(node);
+		
+		$("<a class='moveme' tabindex='99'></a>").mousedown(function(e){ // waaa, keydown event won't trigger without tabindex
+			toolbarthingy.moveme.movestart(e,this.parentNode);
+		}).appendTo(node).focus();
+		
+		
+		$("<a class='sizeme'></a>").mousedown(function(e){ // waaa, keydown event won't trigger without tabindex
+			toolbarthingy.sizeme.sizestart(e,this.parentNode);
+		}).appendTo(node);
+
+		$("#toolbarthingy").show()
+	},
+	deactivate : function(){
+		$(toolbarthingy.activeNode).empty();
+		$("#toolbarthingy").hide();
+		toolbarthingy.activeNode = null;
+	},
+	deleteNode : function(node){
+		toolbarthingy.deactivate();
+		$(node).remove();
+		plist.page.saveCurrentDataset(); // save dataset to memory
+		popup.scanAndGenerateXML(); // rebuild xml on onther window
+		mouse.cursor.crosshairs.grabLinksandStorein_vars(); // rebuild snap-highlighting boundaries
+		toolbarthingy.deactivate();
+		
+	},
+	mode : null,
+	moveme : {
+		origin : {
+			x : null,
+			y : null,
+			nodeX : null,
+			nodeY : null,
+			nodeWidth : null, // the only reason why I call these here is because I don't constantly want to make dom calls during mousemove..
+			nodeHeight : null
+		},
+		backgroundlimits : {
+			width : null,
+			height : null
+		},
+		movestart : function(e,node){
+			var tbmm = toolbarthingy.moveme;
+			if (toolbarthingy.mode != null){return false};
+			toolbarthingy.mode = "moveme";
+			tbmm.origin.x = e.pageX;
+			tbmm.origin.y = e.pageY;
+			tbmm.origin.nodeX = parseInt(node.getAttribute("data-left"));
+			tbmm.origin.nodeY = parseInt(node.getAttribute("data-top"));
+			tbmm.origin.nodeWidth = parseInt(node.getAttribute("data-width"));
+			tbmm.origin.nodeHeight = parseInt(node.getAttribute("data-height"));
+			$("#background").bind("mousemove",tbmm.mousemove);
+			$("#background").mouseup(tbmm.moveend);
+			
+			tbmm.backgroundlimits.width = $("#backgroundplaceholder").width();
+			tbmm.backgroundlimits.height = $("#backgroundplaceholder").height();
+		},
+		mousemove : function(e){
+			var tbmm = toolbarthingy.moveme;
+			
+			var newX = tbmm.origin.nodeX+e.pageX-tbmm.origin.x
+			var newY = tbmm.origin.nodeY+e.pageY-tbmm.origin.y;
+			
+			var borderX = tbmm.backgroundlimits.width-tbmm.origin.nodeWidth;
+			var borderY = tbmm.backgroundlimits.height-tbmm.origin.nodeWidth;
+			
+			
+			// lets set border boundaries so we don't run out of the container..
+			if (newX < 0){newX = 0;}
+			if (newY < 0){newY = 0;}
+			if (newX > borderX){newX = borderX;}
+			if (newY > borderY){newY = borderY;}
+			
+			toolbarthingy.activeNode.style.left = newX+"px";
+			toolbarthingy.activeNode.style.top = newY+"px";
+			
+			// lets' update those vars in the toolbarthingy!
+			$("#cmX").val(newX)
+			$("#cmY").val(newY)
+			
+		},
+		moveend : function(){
+			$("#background").unbind("mousemove",toolbarthingy.moveme.mousemove);
+			$("#background").unbind("mouseup",toolbarthingy.moveme.moveend);
+			var top = toolbarthingy.activeNode.style.top.split("px")[0];
+			var left = toolbarthingy.activeNode.style.left.split("px")[0];
+			
+			toolbarthingy.activeNode.setAttribute("data-top",top)
+			toolbarthingy.activeNode.setAttribute("data-left",left)
+			$("#cmX").val(toolbarthingy.activeNode.getAttribute("data-left"))
+			$("#cmY").val(toolbarthingy.activeNode.getAttribute("data-top"))
+			
+			$(toolbarthingy.activeNode)
+			toolbarthingy.mode = null;
+			// allright, gonna be real lazy here and just rebuild the whole thing
+			plist.page.saveCurrentDataset(); // save dataset to memory
+			popup.scanAndGenerateXML(); // rebuild xml on other window
+			mouse.cursor.crosshairs.grabLinksandStorein_vars(); // rebuild snap-highlighting boundaries
+			
+		}
+	},
+	sizeme : {
+		origin : {
+			x : null,
+			y : null,
+			nodeWidth : null,
+			nodeHeight : null
+		},
+		sizestart : function(e,node){
+			if (toolbarthingy.mode != null){return false};
+			toolbarthingy.mode = "sizeme";
+			var tbsm = toolbarthingy.sizeme;
+			tbsm.origin.x = e.pageX;
+			tbsm.origin.y = e.pageY;
+			
+			tbsm.origin.nodeWidth = parseInt(node.getAttribute("data-width"));
+			tbsm.origin.nodeHeight = parseInt(node.getAttribute("data-height"));
+			
+			
+			$("#background").bind("mousemove",tbsm.sizemove);
+			$("#background").mouseup(tbsm.sizeend);
+			$(".moveme").hide();
+			
+		},
+		sizemove : function(e){
+			var tbsm = toolbarthingy.sizeme;
+			var deltaX = e.pageX-tbsm.origin.x;
+			var deltaY = e.pageY-tbsm.origin.y;
+			
+			var newWidth = tbsm.origin.nodeWidth+deltaX-1;
+			var newHeight = tbsm.origin.nodeHeight+deltaY-1;
+			
+			if (newWidth < 0){newWidth = 1}
+			if (newHeight < 0){newHeight = 1}
+			
+			toolbarthingy.activeNode.style.width = newWidth+"px";
+			toolbarthingy.activeNode.style.height = newHeight+"px";
+
+			$("#cmWidth").val(newWidth)
+			$("#cmHeight").val(newHeight)
+		},
+		sizeend : function(){
+			$("#background").unbind("mousemove",toolbarthingy.sizeme.sizemove);
+			$("#background").unbind("mouseup",toolbarthingy.sizeme.sizeend);
+			
+			var height = toolbarthingy.activeNode.style.height.split("px")[0];
+			var width = toolbarthingy.activeNode.style.width.split("px")[0];
+			
+			toolbarthingy.activeNode.setAttribute("data-height",height);
+			toolbarthingy.activeNode.setAttribute("data-width",width);
+			
+			$(".moveme").show();
+			toolbarthingy.mode = null;
+			// allright, gonna be real lazy here and just rebuild the whole thing
+			plist.page.saveCurrentDataset(); // save dataset to memory
+			popup.scanAndGenerateXML(); // rebuild xml on other window
+			mouse.cursor.crosshairs.grabLinksandStorein_vars(); // rebuild snap-highlighting boundaries
+		}
+	},
+	controls : {
+		x : function(delta){
+			var x = parseInt(toolbarthingy.activeNode.getAttribute("data-left"))+delta;
+			toolbarthingy.activeNode.setAttribute("data-left",x);
+			toolbarthingy.activeNode.style.left = x+"px";
+			$("#cmX").val(x);
+			toolbarthingy.controls.recentlyupdated = true;
+		},
+		y : function(delta){
+			var y = parseInt(toolbarthingy.activeNode.getAttribute("data-top"))+delta;
+			toolbarthingy.activeNode.setAttribute("data-top",y);
+			toolbarthingy.activeNode.style.top = (y-1)+"px";
+			$("#cmY").val(y);
+			toolbarthingy.controls.recentlyupdated = true;
+		},
+		height : function(delta){
+			var height = parseInt(toolbarthingy.activeNode.getAttribute("data-height"))+delta;
+			toolbarthingy.activeNode.setAttribute("data-height",height);
+			toolbarthingy.activeNode.style.height = height+"px";
+			$("#cmHeight").val(height);
+			toolbarthingy.controls.recentlyupdated = true;
+		},
+		width : function(delta){
+			var width = parseInt(toolbarthingy.activeNode.getAttribute("data-width"))+delta;
+			toolbarthingy.activeNode.setAttribute("data-width",width);
+			toolbarthingy.activeNode.style.width = width+"px";
+			$("#cmWidth").val(width);
+			toolbarthingy.controls.recentlyupdated = true;
+		},
+		gotoPage : function(){
+			var page = parseInt(document.getElementById("cmPageNum").value)
+			plist.controls.getPage(page)
+		},
+		recentlyupdated : false
+	},
+	init : function(){
+		$(document).ready(function() {
+			// stupid dom acting up, gonna be real lazy here...
+			$("li.x input[value='-']").click(function(e){
+				toolbarthingy.controls.x(-1);
+				console.log(e,this)
+				})
+			$("li.x input[value='+']").click(function(){
+				toolbarthingy.controls.x(1);
+				})
+			
+			$("li.y input[value='-']").click(function(){
+				toolbarthingy.controls.y(-1);
+				})
+			$("li.y input[value='+']").click(function(){
+				toolbarthingy.controls.y(1);
+				})
+			
+			$("li.height input[value='-']").click(function(){
+				toolbarthingy.controls.height(-1);
+				})
+			$("li.height input[value='+']").click(function(){
+				toolbarthingy.controls.height(1);
+				})
+			
+			$("li.width input[value='-']").click(function(){
+				toolbarthingy.controls.width(-1);
+				})
+			$("li.width input[value='+']").click(function(){
+				toolbarthingy.controls.width(1);
+				})
+				
+				
+			$("#clickMenu li").mouseout(function(){
+				if (toolbarthingy.controls.recentlyupdated){
+					// allright, gonna be real lazy here and just rebuild the whole thing
+					plist.page.saveCurrentDataset(); // save dataset to memory
+					popup.scanAndGenerateXML(); // rebuild xml on other window
+					mouse.cursor.crosshairs.grabLinksandStorein_vars(); // rebuild snap-highlighting boundaries
+					toolbarthingy.controls.recentlyupdated = false;
+				}
+			})
+			$("#cmURL,#cmPageNum").keyup(function(e){ // keyup because the input value is not updated at keydown...
+				if (this.id == "cmURL"){
+					toolbarthingy.activeNode.setAttribute("data-url",this.value);
+					console.log(this.value,"this.value")
+				} else {
+					toolbarthingy.activeNode.setAttribute("data-pagenum",this.value);
+					console.log(this.value,"this.value")
+				}
+				toolbarthingy.controls.recentlyupdated = true;
+			})
+			
+			$('#clickMenu input').mousewheel(function(event, delta, deltaX, deltaY) {
+				if (delta < 0){
+					delta = Math.floor(delta);
+				} else {
+					delta = Math.ceil(delta);
+				}
+				if (this.id == "cmX"){
+					toolbarthingy.controls.x(delta);
+				} else if (this.id == "cmY"){
+					toolbarthingy.controls.y(delta);
+				} else if (this.id == "cmHeight"){
+					toolbarthingy.controls.height(delta);
+				} else if (this.id == "cmWidth"){
+					toolbarthingy.controls.width(delta);
+				}
+				event.stopPropagation();
+				event.preventDefault();
+				event.cancelBubble = false;
+			});				
+		});
+	}
+}
+
+
+
+$(document).ready(function(){
+	mouse.init();
+	mouse.cursor.enablePointermode();
+	
+	plist.init();
+	popup.init();
+	
+	toolbarthingy.init();
+});
 </script>
+
+
+</head>
+
+<body>
+<img id="backgroundplaceholder" />
+<div id="background">
+	<a>hello</a>
+</div>
+<div id="toolbarthingy">
+    <ul id="clickMenu">
+        <li class="x">
+            <label for="cmX">X </label><input id="cmX" type="text" tabindex="0" /><input type="button" value="-" /><input type="button" value="+" />
+        </li>
+        <li class="y">
+            <label for="cmY">Y </label><input id="cmY" type="text" tabindex="1" /><input type="button" value="-" /><input type="button" value="+" />
+        </li>
+        <li class="height">
+            <label for="cmHeight">Height </label><input id="cmHeight" type="text" tabindex="2" /><input type="button" value="-" /><input type="button" value="+" />
+        </li>
+        <li class="width">
+            <label for="cmWidth">Width </label><input id="cmWidth" type="text" tabindex="3" /><input type="button" value="-" /><input type="button" value="+" />
+        </li>
+        <li>
+            <input onclick="toolbarthingy.controls.gotoPage()" value="Activate GOTO" type="button" />
+        </li>
+        <li>
+            <label for="cmURL">URL </label><input id="cmURL" type="text"  tabindex="4"/>
+        </li>
+        <li>
+            <label for="cmPageNum">PageNum </label><input id="cmPageNum" type="text"  tabindex="5"/>
+        </li>
+        <li>
+            <input id="cmTargetID" type="hidden" />
+        </li>
+    </ul>
+</div>
+<div id="thumbsscroller" class="hidden">
+	<div class="scrollcontainer">
+    </div>
+</div>
+<form id="upform">
+	<select onChange="plist.controls.setHeight(this.value)" id="height">
+		<option value="928px">Height: 928px</option>
+		<option value="1004px" selected="selected">Height: 1004px</option>
+	</select>
+	<div id="upbox">Click or drop file here</div>
+	<!--<input id="upfile" type="file" disabled value="test">-->
+	<input type="submit" id="prev" class="nav" value="< Prev" onclick="plist.controls.prev();return false;">
+    <select id="gotoSelect" onchange="plist.controls.getPage(this.value)">
+    	<option> GOTO Page: 0
+        </option>
+    </select>
+	<input type="submit" id="next" class="nav" value="Next >" onClick="plist.controls.next();return false;">
+    <input type="button" id="gotoTOC" class="nav" value="goto TOC" onClick="plist.controls.getPage(plist.data.tocpagenumber)">
+    <input type="button" id="thumbsToggle" class="nav" value="toggle thumbnails" onClick="plist.controls.toggleThumbs()">
+</form>
+<div id="v-guide" class="guide"></div>
+<div id="h-guide" class="guide"></div>
+
+
+
+</body>
+</html>
